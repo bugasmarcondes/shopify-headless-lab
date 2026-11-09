@@ -1,4 +1,5 @@
 import { storefrontFetch } from "@/lib/shopify";
+import { formatPrice } from "@/lib/format";
 
 export type ProductSummary = {
   handle: string;
@@ -17,8 +18,16 @@ export type Product = {
     nodes: { url: string; altText: string | null; width: number; height: number }[];
   };
   variants: {
-    nodes: { id: string; title: string; price: Money }[];
+    nodes: { price: Money }[];
   };
+};
+
+// Only what the product page renders. This is what ends up in __NEXT_DATA__.
+export type ProductViewModel = {
+  title: string;
+  description: string;
+  image: { url: string; alt: string; width: number; height: number } | null;
+  price: string | null;
 };
 
 const PRODUCTS_QUERY = `
@@ -37,7 +46,7 @@ const PRODUCT_QUERY = `
     product(handle: $handle) {
       title
       description
-      images(first: 5) {
+      images(first: 1) {
         nodes {
           url
           altText
@@ -45,10 +54,8 @@ const PRODUCT_QUERY = `
           height
         }
       }
-      variants(first: 10) {
+      variants(first: 1) {
         nodes {
-          id
-          title
           price {
             amount
             currencyCode
@@ -72,4 +79,22 @@ export async function getProduct(handle: string): Promise<Product | null> {
     { handle },
   );
   return data.product;
+}
+
+export function toProductViewModel(product: Product): ProductViewModel {
+  const image = product.images.nodes[0];
+  const variant = product.variants.nodes[0];
+  return {
+    title: product.title,
+    description: product.description,
+    image: image
+      ? {
+          url: image.url,
+          alt: image.altText ?? product.title,
+          width: image.width,
+          height: image.height,
+        }
+      : null,
+    price: variant ? formatPrice(variant.price) : null,
+  };
 }

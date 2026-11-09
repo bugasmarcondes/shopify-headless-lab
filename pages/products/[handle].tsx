@@ -5,11 +5,14 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import { getProduct, type Product } from "@/lib/products";
-import { formatPrice } from "@/lib/format";
+import {
+  getProduct,
+  toProductViewModel,
+  type ProductViewModel,
+} from "@/lib/products";
 
 type Props = {
-  product: Product;
+  product: ProductViewModel;
 };
 
 // Build no product pages at build time; each one is rendered on its
@@ -25,15 +28,12 @@ export const getStaticProps: GetStaticProps<Props, { handle: string }> = async (
   if (!product) {
     return { notFound: true };
   }
-  // Deliberately the full Shopify response for now (Milestone 3 trims it).
+  // Map to only the fields the page shows: props are serialized into __NEXT_DATA__.
   // One day on purpose: in Milestone 4 the webhook, not the timer, refreshes it.
-  return { props: { product }, revalidate: 86400 };
+  return { props: { product: toProductViewModel(product) }, revalidate: 86400 };
 };
 
 export default function ProductPage({ product }: Props) {
-  const image = product.images.nodes[0];
-  const variant = product.variants.nodes[0];
-
   return (
     <>
       <Head>
@@ -41,13 +41,13 @@ export default function ProductPage({ product }: Props) {
       </Head>
       <Container sx={{ py: 4 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={4}>
-          {image && (
+          {product.image && (
             <Box sx={{ flex: 1 }}>
               <Image
-                src={image.url}
-                alt={image.altText ?? product.title}
-                width={image.width}
-                height={image.height}
+                src={product.image.url}
+                alt={product.image.alt}
+                width={product.image.width}
+                height={product.image.height}
                 sizes="(max-width: 900px) 100vw, 50vw"
                 style={{ width: "100%", height: "auto" }}
                 priority
@@ -58,9 +58,9 @@ export default function ProductPage({ product }: Props) {
             <Typography variant="h4" component="h1" gutterBottom>
               {product.title}
             </Typography>
-            {variant && (
+            {product.price && (
               <Typography variant="h5" color="primary" gutterBottom>
-                {formatPrice(variant.price)}
+                {product.price}
               </Typography>
             )}
             <Typography variant="body1">{product.description}</Typography>
