@@ -1,6 +1,6 @@
 import { graphql } from "@/gql";
 import type { ProductQuery, ProductsQuery } from "@/gql/graphql";
-import { storefrontFetch } from "@/lib/shopify";
+import { storefrontFetch } from "@/lib/shopify/storefront";
 import { formatPrice } from "@/lib/format";
 
 // Generated from the schema + the queries below by `pnpm codegen`.
@@ -53,14 +53,12 @@ const PRODUCT_QUERY = graphql(`
 `);
 
 export async function getProducts(): Promise<ProductSummary[]> {
-  const data = await storefrontFetch<ProductsQuery>(PRODUCTS_QUERY.toString());
+  const data = await storefrontFetch(PRODUCTS_QUERY);
   return data.products.nodes;
 }
 
 export async function getProduct(handle: string): Promise<Product | null> {
-  const data = await storefrontFetch<ProductQuery>(PRODUCT_QUERY.toString(), {
-    handle,
-  });
+  const data = await storefrontFetch(PRODUCT_QUERY, { handle });
   return data.product;
 }
 
