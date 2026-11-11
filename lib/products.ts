@@ -1,26 +1,12 @@
+import { graphql } from "@/gql";
+import type { ProductQuery, ProductsQuery } from "@/gql/graphql";
 import { storefrontFetch } from "@/lib/shopify";
 import { formatPrice } from "@/lib/format";
 
-export type ProductSummary = {
-  handle: string;
-  title: string;
-};
-
-export type Money = {
-  amount: string; // Shopify's Decimal comes as a string, e.g. "19.99"
-  currencyCode: string;
-};
-
-export type Product = {
-  title: string;
-  description: string;
-  images: {
-    nodes: { url: string; altText: string | null; width: number; height: number }[];
-  };
-  variants: {
-    nodes: { price: Money }[];
-  };
-};
+// Generated from the schema + the queries below by `pnpm codegen`.
+export type ProductSummary = ProductsQuery["products"]["nodes"][number];
+export type Product = NonNullable<ProductQuery["product"]>;
+export type Money = Product["variants"]["nodes"][number]["price"];
 
 // Only what the product page renders. This is what ends up in __NEXT_DATA__.
 export type ProductViewModel = {
@@ -30,7 +16,7 @@ export type ProductViewModel = {
   price: string | null;
 };
 
-const PRODUCTS_QUERY = `
+const PRODUCTS_QUERY = graphql(`
   query Products {
     products(first: 20) {
       nodes {
@@ -39,9 +25,9 @@ const PRODUCTS_QUERY = `
       }
     }
   }
-`;
+`);
 
-const PRODUCT_QUERY = `
+const PRODUCT_QUERY = graphql(`
   query Product($handle: String!) {
     product(handle: $handle) {
       title
@@ -64,20 +50,17 @@ const PRODUCT_QUERY = `
       }
     }
   }
-`;
+`);
 
 export async function getProducts(): Promise<ProductSummary[]> {
-  const data = await storefrontFetch<{ products: { nodes: ProductSummary[] } }>(
-    PRODUCTS_QUERY,
-  );
+  const data = await storefrontFetch<ProductsQuery>(PRODUCTS_QUERY.toString());
   return data.products.nodes;
 }
 
 export async function getProduct(handle: string): Promise<Product | null> {
-  const data = await storefrontFetch<{ product: Product | null }>(
-    PRODUCT_QUERY,
-    { handle },
-  );
+  const data = await storefrontFetch<ProductQuery>(PRODUCT_QUERY.toString(), {
+    handle,
+  });
   return data.product;
 }
 
@@ -87,14 +70,16 @@ export function toProductViewModel(product: Product): ProductViewModel {
   return {
     title: product.title,
     description: product.description,
-    image: image
-      ? {
-          url: image.url,
-          alt: image.altText ?? product.title,
-          width: image.width,
-          height: image.height,
-        }
-      : null,
+    // Shopify can return null dimensions, and next/image needs both.
+    image:
+      image?.width && image.height
+        ? {
+            url: image.url,
+            alt: image.altText ?? product.title,
+            width: image.width,
+            height: image.height,
+          }
+        : null,
     price: variant ? formatPrice(variant.price) : null,
   };
 }
