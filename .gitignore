@@ -46,3 +46,6 @@ next-env.d.ts
 
 # private study notes (kept local only)
 /docs/
+
+# Claude Code project instructions (kept local only)
+/CLAUDE.md
